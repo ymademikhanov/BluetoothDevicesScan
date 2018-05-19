@@ -1,6 +1,12 @@
 package com.example.macbook.bluetoothproject;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentManager;
 import android.Manifest;
+import android.app.DialogFragment;
+import android.app.TimePickerDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
@@ -17,8 +23,10 @@ import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
+import android.widget.TimePicker;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -74,6 +82,13 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    private final BroadcastReceiver mAlarmReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            scan();
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -96,9 +111,32 @@ public class MainActivity extends AppCompatActivity {
         btnSCAN.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                scan();
+                Calendar mcurrentTime = Calendar.getInstance();
+                int hour = mcurrentTime.get(Calendar.HOUR_OF_DAY);
+                int minute = mcurrentTime.get(Calendar.MINUTE);
+
+                TimePickerDialog mTimePicker;
+                mTimePicker = new TimePickerDialog(MainActivity.this, new TimePickerDialog.OnTimeSetListener() {
+                    @Override
+                    public void onTimeSet(TimePicker timePicker, int selectedHour, int selectedMinute) {
+                        Calendar c = Calendar.getInstance();
+                        c.set(Calendar.HOUR_OF_DAY, selectedHour);
+                        c.set(Calendar.MINUTE, selectedMinute);
+                        startAlarm(c);
+                    }
+                }, hour, minute, true);
+
+                mTimePicker.setTitle("Select Time");
+                mTimePicker.show();
             }
         });
+
+//        btnSCAN.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                scan();
+//            }
+//        });
 
         btnRESET.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -138,6 +176,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void scan() {
+        Log.i(TAG, "scan: Scanning started.");
         if (mBluetoothAdapter == null) {
             Log.i(TAG, "No Bluetooth support.");
         }
@@ -157,5 +196,14 @@ public class MainActivity extends AppCompatActivity {
         BTdevicesList.clear();
         ArrayAdapter adapter = new ArrayAdapter(MainActivity.this, android.R.layout.simple_list_item_1, BTdevicesList.toArray());
         BTdevicesListView.setAdapter(adapter);
+    }
+
+    public void startAlarm(Calendar c) {
+        Log.i(TAG, "startAlarm: setting alarm.");
+        AlarmManager mgr = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(this, AlarmReceiver.class);
+        PendingIntent pendingintent = PendingIntent.getBroadcast(this, 1, intent, 0);
+
+        mgr.setExact(AlarmManager.RTC_WAKEUP, c.getTimeInMillis(), pendingintent);
     }
 }
